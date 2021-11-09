@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "hardware.h": "c",
+        "mk64f12.h": "c",
+        "gpio_pdrv.h": "c",
+        "logic_module.h": "c",
+        "led_drv.h": "c"
+    }
+}
