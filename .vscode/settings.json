@@ -4,6 +4,7 @@
         "mk64f12.h": "c",
         "gpio_pdrv.h": "c",
         "logic_module.h": "c",
-        "led_drv.h": "c"
+        "led_drv.h": "c",
+        "thingspeak_interface.h": "c"
     }
 }

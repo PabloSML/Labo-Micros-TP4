@@ -1,6 +1,6 @@
 /***************************************************************************//**
-  @file     App.c
-  @brief    Application functions
+  @file     thingspeak_interface.c
+  @brief    Thingspeak Interface Source File
   @author   Grupo 4
  ******************************************************************************/
 
@@ -8,20 +8,29 @@
  * INCLUDE HEADER FILES
  ******************************************************************************/
 
-#include "board.h"
-#include "button_drv.h"
-#include "led_drv.h"
-#include "7seg_drv.h"
-#include "encoder_drv.h"
-#include "magnetic_reader_drv.h"
-#include "thingspeak_interface.h"
-#include "gpio_pdrv.h"
-#include "logic_module.h"
+#include "uart.h"
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
+// Gateway definitions
+#define GW_PREFIX               0xAA, 0x55, 0xC3, 0x3C
+#define GW_COMMAND_SEND         0x01
+#define GW_COMMAND_KEEPALIVE    0x02
+#define GW_ANSWER_SENDDATAOK    0x81
+#define GW_ANSWER_SENDDATAFAIL  0xC1
+#define GW_ANSWER_KEEPALIVEOK   0x82
+
+/*******************************************************************************
+ * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
+ ******************************************************************************/
+
+
+
+/*******************************************************************************
+ * VARIABLES WITH GLOBAL SCOPE
+ ******************************************************************************/
 
 /*******************************************************************************
  * FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE
@@ -30,43 +39,33 @@
 
 
 /*******************************************************************************
+ * ROM CONST VARIABLES WITH FILE LEVEL SCOPE
+ ******************************************************************************/
+
+/*******************************************************************************
  * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
  ******************************************************************************/
-static bool stop = false;
+
+static bool yaInit = false;
+
+static uint8_t sendBuffer[12] = {GW_PREFIX, 0, 0, 0, 0, 0, 0, 0, 0};
+
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
  *******************************************************************************
  ******************************************************************************/
 
-/* Función que se llama 1 vez, al comienzo del programa */
-void App_Init (void)
+void thingspeak_init(void)
 {
+  if(!yaInit)
+  {
+    uart_cfg_t u0Config = {.baudrate=1200, .bitcant=8, .parity=NO_PARITY, .sbns=1};
+    uartInit(UART0_ID, u0Config);
 
-  // Inits for DJ_BOARD
-  boardInit();
-  // ledInit();
-  // buttonInit();
-  // encoderInit();
-  // sevenSegInit();
-  // magneticReaderInit();
-  thingspeak_init();
-  // logic_module_init();
-
+    yaInit = true;
+  }
 }
-
-/* Función que se llama constantemente en un ciclo infinito */
-void App_Run (void)
-{
-  // run_logic_module();
-
-	if(uartIsTxMsgComplete(UART0_ID) && !(stop))
-	{
-		uartWriteMsg(UART0_ID, testMsgTx, 12);
-		stop = true;
-	}
-}
-
 
 /*******************************************************************************
  *******************************************************************************
@@ -75,6 +74,4 @@ void App_Run (void)
  ******************************************************************************/
 
 
-
-/*******************************************************************************
- ******************************************************************************/
+/******************************************************************************/
