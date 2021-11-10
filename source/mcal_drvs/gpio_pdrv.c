@@ -11,6 +11,7 @@
 #include "gpio_pdrv.h"
 #include "hardware.h"
 #include "MK64F12.h"
+#include "tools.h"
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -25,9 +26,6 @@
 #define PORT_CANT				5
 #define PORT_IRQS_MAX_CANT		8	// Max number of active IRQs per port
 #define PORT_IRQ_INVALID_ID		255
-
-#define BITCLR(x,pos) ((x) &= ((uint32_t)(~(((uint32_t)1) << (pos)))))
-#define BITSET(x,pos) ((x) |= ((uint32_t)((((uint32_t)1) << (pos)))))
 
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS

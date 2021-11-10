@@ -28,12 +28,6 @@
 #define INPUT_PULLDOWN      3
 #endif // INPUT
 
-// Digital values
-#ifndef LOW
-#define LOW     0
-#define HIGH    1
-#endif // LOW
-
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/

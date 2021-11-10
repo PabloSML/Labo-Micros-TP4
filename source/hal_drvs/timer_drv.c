@@ -129,7 +129,8 @@ bool timerExpired(tim_id_t id)
     // Verifico si expiró el timer
     // y bajo el flag
     bool expired = timers[id].expired;
-    timers[id].expired = false;
+    if(expired)
+    	timers[id].expired = false;
     return expired; 
 }
 

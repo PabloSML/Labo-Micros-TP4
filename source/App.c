@@ -14,6 +14,7 @@
 #include "7seg_drv.h"
 #include "encoder_drv.h"
 #include "magnetic_reader_drv.h"
+#include "uart.h"
 #include "gpio_pdrv.h"
 #include "logic_module.h"
 
@@ -31,8 +32,8 @@
 /*******************************************************************************
  * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
  ******************************************************************************/
-
-
+static bool stop = false;
+static const uint8_t testMsgTx = 0x55;
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
@@ -49,6 +50,8 @@ void App_Init (void)
   buttonInit();
   encoderInit();
   sevenSegInit();
+  uart_cfg_t u0Config = {.baudrate=1200, .bitcant=8, .parity=NO_PARITY, .sbns=1};
+  uartInit(UART0_ID, u0Config);
   magneticReaderInit();
   logic_module_init();
 
@@ -57,7 +60,13 @@ void App_Init (void)
 /* Función que se llama constantemente en un ciclo infinito */
 void App_Run (void)
 {
-  run_logic_module();
+  // run_logic_module();
+
+	if(uartIsTxMsgComplete(UART0_ID) && !(stop))
+	{
+		uartWriteMsg(UART0_ID, &testMsgTx, 1);
+		stop = true;
+	}
 }
 
 
