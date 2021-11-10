@@ -16,11 +16,10 @@
 
 // Gateway definitions
 #define GW_PREFIX               0xAA, 0x55, 0xC3, 0x3C
-#define GW_COMMAND_SEND         0x01
-#define GW_COMMAND_KEEPALIVE    0x02
-#define GW_ANSWER_SENDDATAOK    0x81
-#define GW_ANSWER_SENDDATAFAIL  0xC1
-#define GW_ANSWER_KEEPALIVEOK   0x82
+#define GW_PREFIX_OFFSET        4
+#define GW_LEN_OFFSET           1
+
+#define TS_SENDBUFF_LEN         32
 
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
@@ -48,7 +47,7 @@
 
 static bool yaInit = false;
 
-static uint8_t sendBuffer[12] = {GW_PREFIX, 0, 0, 0, 0, 0, 0, 0, 0};
+static uint8_t sendBuffer[TS_SENDBUFF_LEN] = {GW_PREFIX}; //Init first values with prefix
 
 /*******************************************************************************
  *******************************************************************************
@@ -65,6 +64,26 @@ void thingspeak_init(void)
 
     yaInit = true;
   }
+}
+
+bool thingspeak_tx(const uint8_t* msg, uint8_t msgLen)
+{
+  bool success = true;
+
+  sendBuffer[GW_PREFIX_OFFSET] = msgLen;
+
+  uint8_t i;
+  for(i = 0; i < msgLen; i++)
+  {
+    sendBuffer[i + GW_PREFIX_OFFSET + GW_LEN_OFFSET] = msg[i];
+  }
+
+  if(uartIsTxMsgComplete(UART0_ID))
+    uartWriteMsg(UART0_ID, sendBuffer, (GW_PREFIX_OFFSET+GW_LEN_OFFSET+msgLen));
+  else
+    success = false;
+
+  return success;
 }
 
 /*******************************************************************************

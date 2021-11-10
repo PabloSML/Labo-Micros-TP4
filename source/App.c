@@ -14,9 +14,9 @@
 #include "7seg_drv.h"
 #include "encoder_drv.h"
 #include "magnetic_reader_drv.h"
-#include "thingspeak_interface.h"
 #include "gpio_pdrv.h"
 #include "logic_module.h"
+#include "thingspeak_interface.h"
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -33,6 +33,7 @@
  * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
  ******************************************************************************/
 static bool stop = false;
+static uint8_t testMsgTx[7] = {GW_COMMAND_SEND, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
@@ -45,26 +46,26 @@ void App_Init (void)
 
   // Inits for DJ_BOARD
   boardInit();
-  // ledInit();
-  // buttonInit();
-  // encoderInit();
-  // sevenSegInit();
-  // magneticReaderInit();
+  ledInit();
+  buttonInit();
+  encoderInit();
+  sevenSegInit();
+  magneticReaderInit();
   thingspeak_init();
-  // logic_module_init();
+  logic_module_init();
 
 }
 
 /* Función que se llama constantemente en un ciclo infinito */
 void App_Run (void)
 {
-  // run_logic_module();
+  run_logic_module();
 
-	if(uartIsTxMsgComplete(UART0_ID) && !(stop))
-	{
-		uartWriteMsg(UART0_ID, testMsgTx, 12);
-		stop = true;
-	}
+	// if(!(stop))
+	// {
+	// 	thingspeak_tx(testMsgTx, 7);
+	// 	stop = true;
+	// }
 }
 
 

@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "logic_module.h"
+#include "thingspeak_interface.h"
 #include "decoder.h"
 #include "led_drv.h"
 #include "gpio_pdrv.h"
@@ -18,19 +19,45 @@
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
+#define UPLOADED_CRED_CANT	7
+#define VALID_IDS 			{11111111UL, 51870110UL, 57586984UL, 57046507UL, 51870114UL, 52404904UL, 58663114UL}
+#define VALID_PINS			{1111UL,1111UL,1111UL,1111UL,1111UL,1111UL,1111UL}
+#define VALID_FLOORS		{FLOOR_1, FLOOR_1, FLOOR_1, FLOOR_2, FLOOR_2, FLOOR_3, FLOOR_3}
+
 #define ID_LEN			8
+
+#define FLOOR1_LSB		1
+#define FLOOR2_LSB		3
+#define FLOOR3_LSB		5
 
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
 
+typedef enum {
+	FLOOR_1,
+	FLOOR_2,
+	FLOOR_3
+} building_floors_t;
 
- typedef struct {
-	uint64_t valid_IDs[7];
-	uint64_t valid_PINs[7];
- } credentials_format;
+// Credential type
+typedef struct{
+	uint64_t id;
+	uint64_t pin;
+	building_floors_t floor;
+} credential_t;
 
-
+// // Credential database type
+//  typedef struct {
+// 	uint64_t valid_IDs[7];
+// 	uint64_t valid_PINs[7];
+//  } credential_dbase_t;
+ 
+// typedef struct{
+// 	uint8_t floor1Occup;
+// 	uint8_t floor2Occup;
+// 	uint8_t floor3Occup;
+// } building_occupancy_t;  Maybe not needed
 
 /*******************************************************************************
  * VARIABLES WITH GLOBAL SCOPE
@@ -40,29 +67,35 @@
  * FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE
  ******************************************************************************/
 
-   /**
+/**
  * @brief Checks if input ID is a valid one registered in the data base
  * @return bool
  */
- static bool check_ID();
+static bool check_ID();
 
-   /**
+/**
  * @brief Checks if input PIN is a valid one registered in the data base
  * @return bool
  */
- static bool check_PIN();
+static bool check_PIN();
 
-   /**
+/**
  * @brief converts ID from the magnetic reader in array format to digit format 
  * @return void 
  */ 
- static void convert_ID();
+static void convert_ID();
 
-   /**
+/**
  * @brief Initialize the data base with IDs and PINs 
  * @return void
  */
- static void upload_valid_credentials();
+static void upload_valid_credentials();
+
+/**
+ * @brief notifies corresponding modules about floor ingress 
+ * @param floor floor number
+ */ 
+static void notify_ingress(building_floors_t floor);
 
 /*******************************************************************************
  * ROM CONST VARIABLES WITH FILE LEVEL SCOPE
@@ -74,15 +107,26 @@
 static uint8_t ID_array[8];
 // static uint8_t PIN_array[5] = {-1};
 static uint8_t posc_ID = 0;
+
 static uint64_t ID=0;
 static uint64_t PIN=0;
-static credentials_format valid_credentials;
+// static credential_dbase_t valid_credentials;
+static credential_t currentCred;
+static credential_t valid_credentials[UPLOADED_CRED_CANT];
+
 static DecoderEvent_t decoderEv = DECODER_noev;
+
 static MagReaderEvent_t magreaderEv = MAGREADER_noev;
 static uint8_t panLen = 0;
+
 static bool waiting_for_PIN = false;
 static DecoderType_t estado = DECODER_intensity;
 
+static uint8_t occupancy[GW_DATABUFFER_LEN] = {GW_COMMAND_SEND}; // F1_LSB = 1, F2_LSB = 3, F3_LSB = 5 (Little Endian)
+// static building_occupancy_t occupancy = {.floor1Occup = 0, .floor2Occup = 0, .floor3Occup = 0}; Maybe not needed
+
+static tim_id_t tsTestTimerId;
+static ttick_t tsTestTicks = 100000;
 
 /*******************************************************************************
  *******************************************************************************
@@ -99,16 +143,18 @@ bool logic_module_init(void)
   {
     upload_valid_credentials();
 	ledInit();
+	thingspeak_init();
 	decoder(DECODER_intensity);
+	tsTestTimerId = timerGetId();
+	timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
 	yaInit = true;
   }
 
   return yaInit;
 }
 
-void run_logic_module(void){
-
-
+void run_logic_module(void)
+{
 
 	if(decoder_hasEvent())
 	{
@@ -125,7 +171,7 @@ void run_logic_module(void){
 					decoder(estado); //cambio el estado del decoder 
 					break; 
 				case DECODER_id:
-					ID = decoder_getNumber(); 
+					currentCred.id = decoder_getNumber(); 
 					if (check_ID()) 
 					{
 						estado = DECODER_pin;
@@ -143,9 +189,15 @@ void run_logic_module(void){
 					}
 					break;
 				case DECODER_pin:
-					PIN = decoder_getNumber();
-					if(check_PIN()){
+					currentCred.pin = decoder_getNumber();
+					if(check_PIN())
+					{
 						estado = DECODER_open;
+						if(timerExpired(tsTestTimerId))
+						{
+							notify_ingress(valid_credentials[posc_ID].floor);  // Si ID y PIN validos, se notifica a thingspeak
+							timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
+						}
 						ledOn(LED_3);
 						ledOn(LED_2);
 						ledOn(LED_1);
@@ -243,16 +295,16 @@ void run_logic_module(void){
                         LOCAL FUNCTION DEFINITIONS
  *******************************************************************************
  ******************************************************************************/
-static bool check_ID(){
-
+static bool check_ID()
+{
 	uint8_t posc = 0;
-	bool valid_ID=false;
-	uint8_t n = (uint8_t)(sizeof(valid_credentials.valid_IDs)/sizeof(valid_credentials.valid_IDs[0])); //detecto la cantidad de elementos 
+	bool valid_ID = false;
+	// uint8_t n = (uint8_t)(sizeof(valid_credentials.valid_IDs)/sizeof(valid_credentials.valid_IDs[0])); //detecto la cantidad de elementos 
 
-	while((posc < n) && (valid_ID == false))
+	while((posc < UPLOADED_CRED_CANT) && (valid_ID == false))
 	{
-		if (valid_credentials.valid_IDs[posc]==ID)
-			valid_ID=true;
+		if (valid_credentials[posc].id == currentCred.id)
+			valid_ID = true;
 		else
 			posc++;
 	}
@@ -261,12 +313,17 @@ static bool check_ID(){
 	return valid_ID;
 }
 
-void upload_valid_credentials(void){
-	uint64_t validIDs[7] = {51870110UL,57586984UL,11111111UL,57046507UL,51870114UL, 52404904UL, 58663114UL};
-	uint64_t validPINs[7] = {1111UL,1111UL,1111UL,1111UL,1111UL,1111UL,1111UL};
-	for(uint8_t i = 0; i < 7; i++){
-		valid_credentials.valid_IDs[i] = validIDs[i];
-		valid_credentials.valid_PINs[i] = validPINs[i];
+void upload_valid_credentials(void)
+{
+	uint64_t validIDs[UPLOADED_CRED_CANT] = VALID_IDS;
+	uint64_t validPINs[UPLOADED_CRED_CANT] = VALID_PINS;
+	building_floors_t validFloors[UPLOADED_CRED_CANT] = VALID_FLOORS;
+
+	for(uint8_t i = 0; i < UPLOADED_CRED_CANT; i++)
+	{
+		valid_credentials[i].id = validIDs[i];
+		valid_credentials[i].pin = validPINs[i];
+		valid_credentials[i].floor = validFloors[i];
 	}
 }
 
@@ -275,7 +332,7 @@ static bool check_PIN(void)
 {
 	bool valid_PIN = false;
 
-	if(valid_credentials.valid_PINs[posc_ID] == PIN)
+	if(valid_credentials[posc_ID].pin == currentCred.pin)
 		valid_PIN = true;
 
 	return valid_PIN;
@@ -284,14 +341,20 @@ static bool check_PIN(void)
 static void convert_ID(void)
 {
 	int i = 0;
-	uint8_t n = (uint8_t)(sizeof(ID_array)/sizeof(ID_array[0])); //detecto la cantidad de elementos 
-	ID = 0;
+	// uint8_t n = (uint8_t)(sizeof(ID_array)/sizeof(ID_array[0])); //detecto la cantidad de elementos 
+	currentCred.id = 0;
 
-	for (i = 0; i < n; i++)
-		ID = ID*10 + ID_array[i];  //ID en formato "digitos"
-
+	for (i = 0; i < ID_LEN; i++)
+		currentCred.id = currentCred.id*10 + ID_array[i];  //ID en formato "digitos"
 }
 
+static void notify_ingress(building_floors_t floor)
+{
+
+	occupancy[FLOOR1_LSB + 2*floor]++;
+	thingspeak_tx(occupancy, GW_DATABUFFER_LEN);
+
+}
 
 
 
