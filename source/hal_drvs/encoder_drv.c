@@ -68,7 +68,7 @@ static EncoderEvent_t ev = ENCODER_noev;
 bool encoderInit(void)
 {
   static bool yaInit = false;
-    
+
   if (!yaInit) // init peripheral
   {
     gpioMode(PIN_RCHA, CH_INPUT_TYPE);  // Set gpio connected to RCHA as input
@@ -117,12 +117,12 @@ static void encoder_isr(void)
     if(oldState == ENCODER_sXX)
       ev = ENCODER_eRightTurn;
     break;
-  
+
   case ENCODER_sAX:
     if(oldState == ENCODER_sXX)
       ev = ENCODER_eLeftTurn;
     break;
-  
+
   case ENCODER_sAB:
     /* code */
     break;
@@ -132,6 +132,14 @@ static void encoder_isr(void)
   }
 
   oldState = newState;
+
+	if(ev)
+	{
+		OS_ERR  err;
+		ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+		if (err != OS_ERR_NONE){}
+	}
+
 }
 
 static EncoderState_t getState(void)

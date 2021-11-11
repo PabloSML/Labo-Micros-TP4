@@ -11,6 +11,7 @@
 #include "gpio_pdrv.h"
 #include "board.h"
 #include "magnetic_reader_drv.h"
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -144,12 +145,20 @@ static void magReaderHandler(void)
     if(isdataOK)
     {
       ev = MAGREADER_cardUpload;
+
+      OS_ERR  err;
+      ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+      if (err != OS_ERR_NONE){}
       // uploadCardData();
       // clrRawData();
     }
     else
     {
       ev = MAGREADER_carderror;
+
+      OS_ERR  err;
+      ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+      if (err != OS_ERR_NONE){}
     }
   }
   else //Flanco descendente -> esta pasando

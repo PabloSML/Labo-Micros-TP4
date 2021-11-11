@@ -64,7 +64,7 @@ static ttick_t counter = 0; // Counts succesive PRESSED states
 bool buttonInit(void)
 {
   static bool yaInit = false;
-    
+
   if (!yaInit) // init peripheral
   {
     gpioMode(PIN_SW, SW_INPUT_TYPE);  // Set gpio connected to RSwitch as input
@@ -107,6 +107,7 @@ ButtonEvent_t button_getEvent(void)
 
 static void button_isr(void)
 {
+
   buttonPressed = (gpioRead(PIN_SW) == SW_ACTIVE);
 
   switch (state)
@@ -129,7 +130,7 @@ static void button_isr(void)
       counter++;
     }
     break;
-  
+
   case BUTTON_sReleased:
     if(buttonPressed)
     {
@@ -141,6 +142,13 @@ static void button_isr(void)
   default:
     break;
   }
+
+	if(ev)
+	{
+		OS_ERR  err;
+		ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+		if (err != OS_ERR_NONE){}
+	}
 }
 
 /******************************************************************************/
