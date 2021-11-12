@@ -30,6 +30,7 @@ static CPU_STK TaskStartStk[TASKSTART_STK_SIZE];
 #define TASKLOGGING_STK_SIZE			 256u
 #define TASKLOGGING_STK_SIZE_LIMIT (TASKLOGGING_STK_SIZE / 10u)
 #define TASKLOGGING_TIMEOUT        0u
+#define TASKLOGGING_WAITTIME	15*OS_CFG_TICK_RATE_HZ //Tiempo de espera de ThingSkpeak
 static OS_TCB TaskLoggingTCB;
 static CPU_STK TaskLoggingStk[TASKLOGGING_STK_SIZE];
 /*******************************************************************************
@@ -178,6 +179,7 @@ static void TaskLogging(void *p_arg)
   {
     p_msg = (int) OSTaskQPend(TASKLOGGING_TIMEOUT, OS_OPT_PEND_BLOCKING, &msg_size, &ts, &os_err);
     //Hace lo tuyo Pablo (subilo a la nube)
+    OSTimeDelay( TASKLOGGING_WAITTIME, OS_OPT_TIME_TIMEOUT, &os_err);
 
   }
 }
