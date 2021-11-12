@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -64,7 +65,7 @@ typedef enum
 /**
  * @brief Initialize decoder
  */
-bool decoderInit(void);
+bool decoderInit(OS_TCB* startTCB_p);
 
 //ingresas en que estado estas (Intensity, pin o id) y devuelve evento (noev, inputnum o restart)
 

@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "button_config.h"
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -47,7 +48,7 @@ typedef enum
  * @brief Initialize button_drv and corresponding peripheral
  * @return Initialization succeed
  */
-bool buttonInit(void);
+bool buttonInit(OS_TCB* startTCB_p);
 
 // Non-Blocking services ////////////////////////////////////////////////
 

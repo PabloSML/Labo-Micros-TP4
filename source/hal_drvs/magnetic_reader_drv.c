@@ -11,7 +11,6 @@
 #include "gpio_pdrv.h"
 #include "board.h"
 #include "magnetic_reader_drv.h"
-#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -73,11 +72,13 @@ static bool              validCardData = false;
 static card_data_format  cardData;
 static MagReaderEvent_t  ev = MAGREADER_noev;
 
+static OS_TCB* my_startTCB_p;
+
 /*******************************************************************************
 *                     GLOBAL FUNCTION DEFINITIONS
 *******************************************************************************/
 
-void magneticReaderInit(void)
+void magneticReaderInit(OS_TCB* startTCB_p)
 {
   //Configuro pins
   gpioMode(PIN_MagEnable, INPUT);
@@ -89,6 +90,8 @@ void magneticReaderInit(void)
   irq_id_t idClk = irqGetId(PIN_MagClk);
   gpioIRQ(PIN_MagEnable, PORT_eInterruptEither,  idE, magReaderHandler);
   gpioIRQ(PIN_MagClk   , PORT_eInterruptFalling, idClk, readData); //Los datos cambian en posedge
+
+  my_startTCB_p = startTCB_p;
 }
 
 bool magreader_hasEvent(void)
@@ -146,9 +149,9 @@ static void magReaderHandler(void)
     {
       ev = MAGREADER_cardUpload;
 
-      OS_ERR  err;
-      ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
-      if (err != OS_ERR_NONE){}
+      OS_ERR err;
+		  OSTaskSemPost(my_startTCB_p,OS_OPT_POST_NONE,&err);
+		  if (err != OS_ERR_NONE){}
       // uploadCardData();
       // clrRawData();
     }
@@ -156,8 +159,8 @@ static void magReaderHandler(void)
     {
       ev = MAGREADER_carderror;
 
-      OS_ERR  err;
-      ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+      OS_ERR err;
+      OSTaskSemPost(my_startTCB_p,OS_OPT_POST_NONE,&err);
       if (err != OS_ERR_NONE){}
     }
   }

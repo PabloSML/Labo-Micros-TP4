@@ -9,7 +9,6 @@
  ******************************************************************************/
 
 #include "logic_module.h"
-#include "thingspeak_interface.h"
 #include "decoder.h"
 #include "led_drv.h"
 #include "gpio_pdrv.h"
@@ -26,18 +25,14 @@
 
 #define ID_LEN			8
 
-#define FLOOR1_LSB		1
-#define FLOOR2_LSB		3
-#define FLOOR3_LSB		5
-
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
 
 typedef enum {
-	FLOOR_1,
-	FLOOR_2,
-	FLOOR_3
+	FLOOR_1 = 1,
+	FLOOR_2 = 2,
+	FLOOR_3 = 3
 } building_floors_t;
 
 // Credential type
@@ -91,11 +86,6 @@ static void convert_ID();
  */
 static void upload_valid_credentials();
 
-/**
- * @brief notifies corresponding modules about floor ingress 
- * @param floor floor number
- */ 
-static void notify_ingress(building_floors_t floor);
 
 /*******************************************************************************
  * ROM CONST VARIABLES WITH FILE LEVEL SCOPE
@@ -122,11 +112,8 @@ static uint8_t panLen = 0;
 static bool waiting_for_PIN = false;
 static DecoderType_t estado = DECODER_intensity;
 
-static uint8_t occupancy[GW_DATABUFFER_LEN] = {GW_COMMAND_SEND}; // F1_LSB = 1, F2_LSB = 3, F3_LSB = 5 (Little Endian)
-// static building_occupancy_t occupancy = {.floor1Occup = 0, .floor2Occup = 0, .floor3Occup = 0}; Maybe not needed
-
 static tim_id_t tsTestTimerId;
-static ttick_t tsTestTicks = 100000;
+static ttick_t tsTestTicks = 125000;
 
 /*******************************************************************************
  *******************************************************************************
@@ -135,7 +122,7 @@ static ttick_t tsTestTicks = 100000;
  ******************************************************************************/
 
 
-bool logic_module_init(void)
+bool logic_module_init(OS_TCB* startTCB_p)
 {
   static bool yaInit = false;
     
@@ -143,18 +130,24 @@ bool logic_module_init(void)
   {
     upload_valid_credentials();
 	ledInit();
-	thingspeak_init();
+	decoderInit(startTCB_p);
 	decoder(DECODER_intensity);
-	tsTestTimerId = timerGetId();
-	timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
+	// tsTestTimerId = timerGetId();
+	// timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
 	yaInit = true;
   }
 
   return yaInit;
 }
 
-void run_logic_module(void)
+void run_logic_module(void* msg)
 {
+
+	// if(timerExpired(tsTestTimerId))
+	// {
+	// 	*((building_floors_t*)msg) = FLOOR_1; // Read by logger
+	// 	timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
+	// }
 
 	if(decoder_hasEvent())
 	{
@@ -193,11 +186,7 @@ void run_logic_module(void)
 					if(check_PIN())
 					{
 						estado = DECODER_open;
-						if(timerExpired(tsTestTimerId))
-						{
-							notify_ingress(valid_credentials[posc_ID].floor);  // Si ID y PIN validos, se notifica a thingspeak
-							timerStart(tsTestTimerId, tsTestTicks, TIM_MODE_SINGLESHOT, 0);
-						}
+						*((building_floors_t*)msg) = valid_credentials[posc_ID].floor; // Read by logger
 						ledOn(LED_3);
 						ledOn(LED_2);
 						ledOn(LED_1);
@@ -348,13 +337,7 @@ static void convert_ID(void)
 		currentCred.id = currentCred.id*10 + ID_array[i];  //ID en formato "digitos"
 }
 
-static void notify_ingress(building_floors_t floor)
-{
 
-	occupancy[FLOOR1_LSB + 2*floor]++;
-	thingspeak_tx(occupancy, GW_DATABUFFER_LEN);
-
-}
 
 
 

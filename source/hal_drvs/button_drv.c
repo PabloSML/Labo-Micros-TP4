@@ -55,13 +55,15 @@ static ButtonState_t state = BUTTON_sReleased;
 static ButtonEvent_t ev = BUTTON_noev;
 static ttick_t counter = 0; // Counts succesive PRESSED states
 
+static OS_TCB* my_startTCB_p;
+
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
  *******************************************************************************
  ******************************************************************************/
 
-bool buttonInit(void)
+bool buttonInit(OS_TCB* startTCB_p)
 {
   static bool yaInit = false;
 
@@ -77,6 +79,8 @@ bool buttonInit(void)
       timerStart(timerId, timerTicks, TIM_MODE_PERIODIC, &button_isr);
       yaInit = true;
     }
+
+    my_startTCB_p = startTCB_p;
   }
 
   return yaInit;
@@ -145,8 +149,8 @@ static void button_isr(void)
 
 	if(ev)
 	{
-		OS_ERR  err;
-		ctr = OSTaskSemPost(NULL,OS_OPT_POST_NONE,&err);
+		OS_ERR err;
+		OSTaskSemPost(my_startTCB_p,OS_OPT_POST_NONE,&err);
 		if (err != OS_ERR_NONE){}
 	}
 }

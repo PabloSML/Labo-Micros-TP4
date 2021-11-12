@@ -51,6 +51,14 @@
 extern  "C" {
 #endif
 
+/*******************************************************************************
+ * INCLUDE HEADER FILES
+ ******************************************************************************/
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "cpu.h"
+#include "SysTick_config.h"
 
 /*
 *********************************************************************************************************
@@ -75,6 +83,12 @@ extern  "C" {
 #define  OS_TASK_SW()           OSCtxSw()
 
 #define  OS_TASK_SW_SYNC()      __asm__ __volatile__ ("isb" : : : "memory")
+
+/*******************************************************************************
+ * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
+ ******************************************************************************/
+
+typedef void (*systck_callback_t)(void);
 
 /*
 *********************************************************************************************************
@@ -157,6 +171,7 @@ void  PendSV_Handler (void);
 
 void  SysTick_Handler(void);
 void  OS_CPU_SysTickInit   (CPU_INT32U  cnts);
+bool SysTick_Init (systck_callback_t funcallback);
 
 #if (OS_CPU_ARM_FP_EN == DEF_ENABLED)
 void  OS_CPU_FP_Reg_Push   (CPU_STK    *stkPtr);

@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -50,7 +51,7 @@ typedef enum
  /**
  * @brief Initialize magnetic reader
  */
-void magneticReaderInit(void);
+void magneticReaderInit(OS_TCB* startTCB_p);
 /**
 * @brief Returns de last saved Data Track
 */

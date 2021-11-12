@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "encoder_config.h"
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -45,7 +46,7 @@ typedef enum
  * @brief Initialize encoder_drv and corresponding peripheral
  * @return Initialization succeed
  */
-bool encoderInit(void);
+bool encoderInit(OS_TCB* startTCB_p);
 
 // Non-Blocking services ////////////////////////////////////////////////
 

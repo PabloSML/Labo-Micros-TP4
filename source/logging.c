@@ -1,6 +1,6 @@
 /***************************************************************************//**
-  @file     encoder_drv.c
-  @brief    Encoder Driver Source File
+  @file     logging.c
+  @brief    Logging Thread Source File
   @author   Grupo 4
  ******************************************************************************/
 
@@ -8,28 +8,20 @@
  * INCLUDE HEADER FILES
  ******************************************************************************/
 
-#include "encoder_drv.h"
-#include "gpio_pdrv.h"
-#include "timer_drv.h"
+#include "thingspeak_interface.h"
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
 
-
+#define FLOOR1_LSB		1
+#define FLOOR2_LSB		3
+#define FLOOR3_LSB		5
 
 /*******************************************************************************
  * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
  ******************************************************************************/
 
-typedef enum
-{
-	ENCODER_sXX  				= 0x00,         // Both Channels Inactive
-  ENCODER_sXB  				= 0x01,         // Only Channel B Active
-  ENCODER_sAX  				= 0x02,         // Only Channel A Active
-  ENCODER_sAB  				= 0x03         // Both Channels Active
-
-} EncoderState_t;
 
 
 /*******************************************************************************
@@ -40,8 +32,6 @@ typedef enum
  * FUNCTION PROTOTYPES FOR PRIVATE FUNCTIONS WITH FILE LEVEL SCOPE
  ******************************************************************************/
 
-static void encoder_isr(void);
-static EncoderState_t getState(void);
 
 /*******************************************************************************
  * ROM CONST VARIABLES WITH FILE LEVEL SCOPE
@@ -51,15 +41,7 @@ static EncoderState_t getState(void);
  * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
  ******************************************************************************/
 
-static tim_id_t timerId;
-static ttick_t timerTicks = ENCODER_ISR_PERIOD;
-static uint8_t rcha_active = !CHANNEL_ACTIVE;
-static uint8_t rchb_active = !CHANNEL_ACTIVE;
-static EncoderState_t oldState = ENCODER_sXX;
-static EncoderState_t newState = ENCODER_sXX;
-static EncoderEvent_t ev = ENCODER_noev;
-
-static OS_TCB* my_startTCB_p;
+static uint8_t occupancy[GW_DATABUFFER_LEN] = {GW_COMMAND_SEND}; // F1_LSB = 1, F2_LSB = 3, F3_LSB = 5 (Little Endian)
 
 /*******************************************************************************
  *******************************************************************************
@@ -67,38 +49,15 @@ static OS_TCB* my_startTCB_p;
  *******************************************************************************
  ******************************************************************************/
 
-bool encoderInit(OS_TCB* startTCB_p)
+void logging_init(void)
 {
-  static bool yaInit = false;
-
-  if (!yaInit) // init peripheral
-  {
-    gpioMode(PIN_RCHA, CH_INPUT_TYPE);  // Set gpio connected to RCHA as input
-    gpioMode(PIN_RCHB, CH_INPUT_TYPE);  // Set gpio connected to RCHB as input
-    timerInit();
-    timerId = timerGetId();
-    if(timerId != TIMER_INVALID_ID)
-    {
-      timerStart(timerId, timerTicks, TIM_MODE_PERIODIC, &encoder_isr);
-      yaInit = true;
-    }
-
-    my_startTCB_p = startTCB_p;
-  }
-
-  return yaInit;
+  thingspeak_init();
 }
 
-bool encoder_hasEvent(void)
+void notify_ingress(uint8_t floor)
 {
-  return ev;
-}
-
-EncoderEvent_t encoder_getEvent(void)
-{
-  EncoderEvent_t temp = ev;
-  ev = ENCODER_noev;
-  return temp;
+	occupancy[FLOOR1_LSB + 2*(floor-1)]++;
+	thingspeak_tx(occupancy, GW_DATABUFFER_LEN);
 }
 
 /*******************************************************************************
@@ -107,51 +66,5 @@ EncoderEvent_t encoder_getEvent(void)
  *******************************************************************************
  ******************************************************************************/
 
-static void encoder_isr(void)
-{
-  newState = getState();
-
-  switch (newState)
-  {
-  case ENCODER_sXX:
-    /* code */
-    break;
-
-  case ENCODER_sXB:
-    if(oldState == ENCODER_sXX)
-      ev = ENCODER_eRightTurn;
-    break;
-
-  case ENCODER_sAX:
-    if(oldState == ENCODER_sXX)
-      ev = ENCODER_eLeftTurn;
-    break;
-
-  case ENCODER_sAB:
-    /* code */
-    break;
-
-  default:
-    break;
-  }
-
-  oldState = newState;
-
-	if(ev)
-	{
-    OS_ERR err;
-		OSTaskSemPost(my_startTCB_p,OS_OPT_POST_NONE,&err);
-		if (err != OS_ERR_NONE){}
-	}
-
-}
-
-static EncoderState_t getState(void)
-{
-  rcha_active = (gpioRead(PIN_RCHA) == CHANNEL_ACTIVE);       // Get Channel States
-  rchb_active = (gpioRead(PIN_RCHB) == CHANNEL_ACTIVE);
-
-  return (EncoderState_t)((rcha_active << 1) + rchb_active);
-}
 
 /******************************************************************************/

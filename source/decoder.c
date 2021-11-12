@@ -122,13 +122,15 @@ static ButtonEvent_t newButtonEv = BUTTON_noev;
 
 static DecoderType_t type = -1;
 
+static OS_TCB* my_startTCB_p;
+
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
  *******************************************************************************
  ******************************************************************************/
 
-bool decoderInit(void)
+bool decoderInit(OS_TCB* startTCB_p)
 {
     static bool yaInit = false;
     
@@ -138,7 +140,8 @@ bool decoderInit(void)
     timerId = timerGetId();
     if(timerId != TIMER_INVALID_ID)
     {
-      yaInit = true;
+        my_startTCB_p = startTCB_p;
+        yaInit = true;
     }
   }
 
@@ -291,6 +294,9 @@ int64_t decoder_getNumber(void){
 static void restart_isr(void)
 {
     restart = true;
+    OS_ERR err;
+    OSTaskSemPost(my_startTCB_p,OS_OPT_POST_NONE,&err);
+    if (err != OS_ERR_NONE){}
 }
 
 static void number2char(void){

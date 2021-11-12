@@ -11,8 +11,9 @@
 // #include "board.h"
 #include "taskHandler.h"
 #include  <os.h>
+#include "os_cfg_app.h"
 #include "hardware.h"
-#include "thingspeak_interface.h"
+#include "logging.h"
 
 /*******************************************************************************
 * TASKS CONSTANTS, VARIABLES AND MACRO DEFINITIONS USING #DEFINE
@@ -30,13 +31,13 @@ static CPU_STK TaskStartStk[TASKSTART_STK_SIZE];
 #define TASKLOGGING_STK_SIZE			 256u
 #define TASKLOGGING_STK_SIZE_LIMIT (TASKLOGGING_STK_SIZE / 10u)
 #define TASKLOGGING_TIMEOUT        0u
-#define TASKLOGGING_WAITTIME	15*OS_CFG_TICK_RATE_HZ //Tiempo de espera de ThingSkpeak
+#define TASKLOGGING_WAITTIME	20*OS_CFG_TICK_RATE_HZ //Tiempo de espera de ThingSkpeak
 static OS_TCB TaskLoggingTCB;
 static CPU_STK TaskLoggingStk[TASKLOGGING_STK_SIZE];
 /*******************************************************************************
 * ENUMERATIONS AND STRUCTURES AND TYPEDEFS
 *******************************************************************************/
-void App_Init (void);
+void App_Init (OS_TCB* startTCB_p);
 void App_Run (void* msg);
 /*******************************************************************************
 * VARIABLES WITH GLOBAL SCOPE
@@ -115,9 +116,9 @@ static void TaskStart(void *p_arg)
   CPU_TS      ts;
 
   /* Initialize the uC/CPU Services. and APP*/
-  hw_DisableInterrupts();
+  // hw_DisableInterrupts();
   CPU_Init();
-  App_Init(); /* Program-specific setup */
+  App_Init(&TaskStartTCB); /* Program-specific setup */
 
 #if OS_CFG_STAT_TASK_EN > 0u
    // (optional) Compute CPU capacity with no task running
@@ -128,7 +129,6 @@ static void TaskStart(void *p_arg)
   CPU_IntDisMeasMaxCurReset();
 #endif
 
-  hw_EnableInterrupts();
 
   // Create TaskLogging
   OSTaskCreate(&TaskLoggingTCB,
@@ -145,6 +145,7 @@ static void TaskStart(void *p_arg)
                (OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                &os_err);
 
+  hw_EnableInterrupts();
 
   while (1)
   {
@@ -173,13 +174,13 @@ static void TaskLogging(void *p_arg)
   OS_MSG_SIZE   msg_size;
   CPU_TS        ts;
 
-  thingspeak_init();
+  logging_init();
 
   while(1)
   {
     p_msg = (int) OSTaskQPend(TASKLOGGING_TIMEOUT, OS_OPT_PEND_BLOCKING, &msg_size, &ts, &os_err);
-    //Hace lo tuyo Pablo (subilo a la nube)
-    OSTimeDelay( TASKLOGGING_WAITTIME, OS_OPT_TIME_TIMEOUT, &os_err);
+    notify_ingress(p_msg);
+    OSTimeDly( TASKLOGGING_WAITTIME, OS_OPT_TIME_TIMEOUT, &os_err);
 
   }
 }

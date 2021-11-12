@@ -10,5 +10,6 @@
 int main (void)
 {
     hw_Init();
+    hw_DisableInterrupts();
     tasksInit();
 }

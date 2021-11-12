@@ -10,7 +10,7 @@
 
 #include "board.h"
 #include "timer_drv.h"
-#include "SysTick_pdrv.h"
+#include "os_cpu.h"
 #include "gpio_pdrv.h"
 
 /*******************************************************************************

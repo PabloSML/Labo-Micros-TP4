@@ -415,6 +415,25 @@ void  OSTimeTickHook (void)
 #endif
 }
 
+#include "hardware.h"
+
+/*******************************************************************************
+ * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
+ ******************************************************************************/
+
+static systck_callback_t systick_callback;
+
+/*******************************************************************************
+ * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
+ ******************************************************************************/
+
+#define DEVELOPMENT_MODE    0
+
+#define SYSTICK_LOAD_INIT   ((__CORE_CLOCK__/SYSTICK_ISR_FREQUENCY_HZ) - 1U)
+
+#if SYSTICK_LOAD_INIT > (1<<24)
+#error Overflow de SysTick! Ajustar  __CORE_CLOCK__ y SYSTICK_ISR_FREQUENCY_HZ!
+#endif // SYSTICK_LOAD_INIT > (1<<24)
 
 /*
 *********************************************************************************************************
@@ -441,6 +460,8 @@ void  SysTick_Handler (void)
     OSTimeTick();                                           /* Call uC/OS-III's OSTimeTick()                          */
 
     OSIntExit();                                            /* Tell uC/OS-III that we are leaving the ISR             */
+
+    systick_callback();
 }
 
 
@@ -475,6 +496,24 @@ void  OS_CPU_SysTickInit (CPU_INT32U  cnts)
                              CPU_REG_NVIC_ST_CTRL_ENABLE;
                                                             /* Enable timer interrupt.                                */
     CPU_REG_NVIC_ST_CTRL  |= CPU_REG_NVIC_ST_CTRL_TICKINT;
+
+}
+
+bool SysTick_Init (systck_callback_t funcallback)
+{
+    static bool yaInit = false;
+
+    if (!yaInit && funcallback)
+    {
+        SysTick->CTRL = 0x00;
+        SysTick->LOAD = SYSTICK_LOAD_INIT;
+        SysTick->VAL  = 0x00;
+        SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+
+        systick_callback = funcallback;
+        yaInit = true;
+    }
+    return yaInit;
 }
 
 

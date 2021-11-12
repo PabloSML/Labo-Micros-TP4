@@ -16,7 +16,7 @@
 #include "magnetic_reader_drv.h"
 #include "gpio_pdrv.h"
 #include "logic_module.h"
-#include "thingspeak_interface.h"
+#include <os.h>
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
@@ -33,7 +33,6 @@
  * STATIC VARIABLES AND CONST VARIABLES WITH FILE LEVEL SCOPE
  ******************************************************************************/
 static bool stop = false;
-static uint8_t testMsgTx[7] = {GW_COMMAND_SEND, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
 /*******************************************************************************
  *******************************************************************************
                         GLOBAL FUNCTION DEFINITIONS
@@ -41,25 +40,24 @@ static uint8_t testMsgTx[7] = {GW_COMMAND_SEND, 0x01, 0x00, 0x00, 0x00, 0x00, 0x
  ******************************************************************************/
 
 /* Función que se llama 1 vez, al comienzo del programa */
-void App_Init (void)
+void App_Init (OS_TCB* startTCB_p)
 {
 
   // Inits for DJ_BOARD
   boardInit();
   ledInit();
-  buttonInit();
-  encoderInit();
+  buttonInit(startTCB_p);
+  encoderInit(startTCB_p);
   sevenSegInit();
-  magneticReaderInit();
-  thingspeak_init();
-  logic_module_init();
+  magneticReaderInit(startTCB_p);
+  logic_module_init(startTCB_p);
 
 }
 
 /* Función que se llama constantemente en un ciclo infinito */
-void App_Run (void)
+void App_Run (void* msg)
 {
-  run_logic_module();
+  run_logic_module(msg);
 
 	// if(!(stop))
 	// {

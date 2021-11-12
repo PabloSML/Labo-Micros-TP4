@@ -1,13 +1,11 @@
 /***************************************************************************//**
-  @file     logic_module.h
-  @brief    Logic Module Header File
+  @file     logging.h
+  @brief    Logging Thread Header File
   @author   Grupo 4
  ******************************************************************************/
 
-#ifndef _LOGIC_MODULE_H_
-#define _LOGIC_MODULE_H_
-
-
+#ifndef _LOGGING_H_
+#define _LOGGING_H_
 
 /*******************************************************************************
  * INCLUDE HEADER FILES
@@ -16,16 +14,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "button_drv.h"
-#include "led_drv.h"
-#include "gpio_pdrv.h"
-#include "magnetic_reader_drv.h"
-#include <os.h>
+
 
 /*******************************************************************************
  * CONSTANT AND MACRO DEFINITIONS USING #DEFINE
  ******************************************************************************/
-
 
 
 /*******************************************************************************
@@ -37,28 +30,22 @@
  * VARIABLE PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
 
-
 /*******************************************************************************
  * FUNCTION PROTOTYPES WITH GLOBAL SCOPE
  ******************************************************************************/
 
-  /**
- * @brief Initialize the logic module and the drivers beneath 
- * @return bool, true if everything initialized correctly
+/**
+ * @brief Initialize logging thread
  */
-bool logic_module_init(OS_TCB* startTCB_p);
+void logging_init(void);
 
-
-  /**
- * @brief Runs the logic module that talks to the drivers
- * @return void
- */
-void run_logic_module(void* msg);
-
-
-
+/**
+ * @brief notifies corresponding modules about floor ingress 
+ * @param floor floor number
+ */ 
+void notify_ingress(uint8_t floor);
 
 /*******************************************************************************
  ******************************************************************************/
 
-#endif // _LED_DRV_H_
+#endif // _LOGGING_H_
